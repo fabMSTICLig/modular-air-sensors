@@ -6,6 +6,8 @@ This is an application to build device with modular air sensors using the [RIOT-
 
 The project is based on the LORA E5 mini board of seeed studio https://wiki.seeedstudio.com/LoRa_E5_mini/
 
+![example_device](https://github.com/fabMSTICLig/modular-air-sensors/blob/main/example_device.jpg?raw=true)
+
 Usage
 =====
 
