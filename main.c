@@ -1,16 +1,17 @@
 /*
- * Copyright (C) 2021 FabMSTIC
+ * Copyright (C) 2022 LIG Laboratoire Informatique de Grenoble
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
  * directory for more details.
- */
+ *
+*/
 
 /**
  * @{
  *
  * @file
- * @brief       modular air quality board
+ * @brief       modular air sensor board
  *
  * @author      Germain Lemasson <germain.lemasson@univ-grenoble-alpes.fr>
  *
@@ -38,6 +39,8 @@
 #include "dlpp.h"
 #include "airqual_common.h"
 
+
+#define LEDON_PIN GPIO_PIN(PORT_B, 4)
 
 #ifdef MODULE_SCD30
 #include "use_scd30.h"
@@ -95,22 +98,9 @@ static char print_buf[LORAMAC_APPKEY_LEN * 2 + 1];
 static uint8_t deveui[LORAMAC_DEVEUI_LEN];
 static uint8_t appeui[LORAMAC_APPEUI_LEN];
 static uint8_t appkey[LORAMAC_APPKEY_LEN];
-/*
-   static semtech_loramac_t loramac;
-   static sx126x_t sx126x;
-
-   static uint8_t deveui[LORAMAC_DEVEUI_LEN];
-   static uint8_t appeui[LORAMAC_APPEUI_LEN];
-   static uint8_t appkey[LORAMAC_APPKEY_LEN];
-   */
-
 
 static uint8_t sender_buffer[LORAMAC_BUFFER_SIZE];
 static uint8_t sender_cursor=0;
-/*
-static uint8_t sender_buffer2[DLPP_MAXSIZE];
-static uint8_t sender_cursor2=0;
-*/
 
 static void _timer_cb(void *arg)
 {
@@ -141,11 +131,6 @@ static void * sender_thread(void *arg)
     mutex_lock(&sender_mutex);
     sender_cursor=0;
     fill=1;
-/*    if(sender_cursor2)
-    {
-      memcpy( sender_buffer, sender_buffer2, sender_cursor2);
-      sender_cursor=sender_cursor2;
-    }*/
     while(fill)
     {
       if(msg_try_receive(&msg)==1)
@@ -159,9 +144,6 @@ static void * sender_thread(void *arg)
         }
         else
         {
-          /*puts("Add to buffer2");
-          memcpy( sender_buffer2, MSG_BUFFER(msg), size );
-          sender_cursor2=size;*/
           fill=0;
         }
         mutex_unlock(MSG_MUTEX(msg));
@@ -186,7 +168,6 @@ static void * sender_thread(void *arg)
   return NULL;
 }
 
-#define LEDON_PIN GPIO_PIN(PORT_B, 4)
 
 int main(void)
 {
