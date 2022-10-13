@@ -11,7 +11,7 @@
 #ifdef MODULE_SFA3X
 #include "periph/i2c.h"
 #include "ztimer.h"
-#include "airqual_common.h"
+#include "mas_common.h"
 #include "dlpp.h"
 
 #include "sfa3x_i2c.h"

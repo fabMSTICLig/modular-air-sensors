@@ -11,7 +11,7 @@
 #ifdef MODULE_SCD4X
 #include "periph/i2c.h"
 #include "ztimer.h"
-#include "airqual_common.h"
+#include "mas_common.h"
 #include "dlpp.h"
 
 #include "scd4x_i2c.h"

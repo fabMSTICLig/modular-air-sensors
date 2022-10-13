@@ -12,7 +12,7 @@
 #include "periph/i2c.h"
 #include "ztimer.h"
 #include "dlpp.h"
-#include "airqual_common.h"
+#include "mas_common.h"
 
 #include "sensirion_common.h"
 #include "sgp40_i2c.h"

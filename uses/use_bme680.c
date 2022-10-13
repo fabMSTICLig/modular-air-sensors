@@ -11,7 +11,7 @@
 #ifdef MODULE_BME680
 #include "periph/i2c.h"
 #include "ztimer.h"
-#include "airqual_common.h"
+#include "mas_common.h"
 #include "dlpp.h"
 
 #include "bme680.h"

@@ -37,7 +37,7 @@
 #include "sx126x_params.h"
 
 #include "dlpp.h"
-#include "airqual_common.h"
+#include "mas_common.h"
 
 
 #define LEDON_PIN GPIO_PIN(PORT_B, 4)

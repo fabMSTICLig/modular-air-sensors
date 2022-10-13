@@ -28,7 +28,7 @@ extern "C" {
 #define USE_SEN5X_CHANNEL (1U)
 #endif
 
-#define USE_SEN5X_BUFFER_SIZE (12U)
+#define USE_SEN5X_BUFFER_SIZE (18U)
 
 void init_use_sen5x(kernel_pid_t mainpid, mutex_t * sender_mutex);
 

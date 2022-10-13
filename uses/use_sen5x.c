@@ -11,7 +11,7 @@
 #ifdef MODULE_SEN5X
 #include "periph/i2c.h"
 #include "ztimer.h"
-#include "airqual_common.h"
+#include "mas_common.h"
 #include "dlpp.h"
 
 #include "sen5x_i2c.h"
@@ -58,13 +58,17 @@ static void * sen5x_thread(void *arg)
   int16_t ambient_humidity;
   int16_t ambient_temperature;
   int16_t voc_index;
+  uint16_t voc_raw;
   int16_t nox_index;
+  uint16_t nox_raw;
   int16_t error=0;
   int8_t running=true;
   while(running)
   {
     mutex_lock(sender_mutex);
-    error = sen5x_read_measured_values(i2c_dev, 
+    error = sen5x_read_measured_raw_values(i2c_dev, 
+        &ambient_humidity, &ambient_temperature, &voc_raw, &nox_raw);
+    error |= sen5x_read_measured_values(i2c_dev, 
         &mass_concentration_pm1p0, &mass_concentration_pm2p5,
         &mass_concentration_pm4p0, &mass_concentration_pm10p0,
         &ambient_humidity, &ambient_temperature, &voc_index, &nox_index);
@@ -101,12 +105,16 @@ static void * sen5x_thread(void *arg)
         printf("SEN5X Nox index: %.1f\n", nox_index / 10.0f);
       }
       mutex_lock(&buffer_mutex);
-      dlpp(USE_SEN5X_CHANNEL, buffer,'H',5, 
+      dlpp(USE_SEN5X_CHANNEL, buffer,'H',8, 
           (uint16_t)mass_concentration_pm1p0,
           (uint16_t)mass_concentration_pm2p5,
           (uint16_t)mass_concentration_pm4p0,
           (uint16_t)mass_concentration_pm10p0,
-          (uint16_t)voc_index);
+          (uint16_t)voc_index,
+          (uint16_t)voc_raw,
+          (uint16_t)nox_index,
+          (uint16_t)nox_raw
+          );
       mutex_unlock(&buffer_mutex);
       int retmsg = msg_try_send(&msg, sender_pid);
       if(retmsg != 1) printf("SEN5X sendfail %d", retmsg);
