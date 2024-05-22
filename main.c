@@ -23,11 +23,14 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "debug.h"
 #include "board.h"
 #include "msg.h"
 #include "thread.h"
 #include "fmt.h"
 #include "ztimer.h"
+#include "ztimer/periodic.h"
+#include "periph/pm.h"
 
 #include "net/loramac.h"
 #include "semtech_loramac.h"
@@ -73,6 +76,10 @@
 #include "use_gmxxx.h"
 #endif
 
+#define GUARD_SENDER_CHECK_PERIOD_S 10
+
+#define GUARD_SENDER_TIMEOUT_MS 10000
+
 #ifndef LORAMAC_BUFFER_SIZE
 #define LORAMAC_BUFFER_SIZE            (50U)
 #endif
@@ -104,6 +111,7 @@ static uint8_t sender_cursor=0;
 
 static void _timer_cb(void *arg)
 {
+  puts("TICK");
   ztimer_set(ZTIMER_SEC, &timer, SENDER_INTERVAL_SECS);
   mutex_unlock(arg);
 }
@@ -168,6 +176,46 @@ static void * sender_thread(void *arg)
   return NULL;
 }
 
+static ztimer_now_t start_time=0;
+
+static ztimer_periodic_t _wakeup_sender_ztimer; // = { 0 };
+
+static bool _wakeup_sender_cb(void *arg)
+{
+	(void)arg;
+    if(start_time != 0)
+    {
+        ztimer_now_t delta = ztimer_now(ZTIMER_MSEC) - start_time;
+        if(delta > GUARD_SENDER_TIMEOUT_MS)
+        {
+            DEBUG("[%s] timeout after %ld ms\n", __FUNCTION__, delta);
+            DEBUG("[%s] rebooting now ...\n", __FUNCTION__);
+            pm_reboot();
+        } else {
+            DEBUG("[%s] delta: %ld ms\n", __FUNCTION__, delta);
+        }
+    }
+	  // function to call on each trigger returns true if the timer should keep going
+    return true;
+}
+
+static int wakeup_sender_ztimer(void) {
+
+    ztimer_periodic_init(ZTIMER_SEC,
+        &_wakeup_sender_ztimer,
+        _wakeup_sender_cb,
+        (void*)NULL,
+        GUARD_SENDER_CHECK_PERIOD_S);
+    ztimer_periodic_start(&_wakeup_sender_ztimer);
+
+    if (!ztimer_is_set(ZTIMER_SEC, &_wakeup_sender_ztimer.timer)) {
+        printf("[%s] ERROR\n", __FUNCTION__);
+        return -1;
+    }
+    DEBUG("[%s] started\n", __FUNCTION__);
+
+	return 0;
+}
 
 int main(void)
 {
@@ -192,7 +240,7 @@ int main(void)
   print_buf[LORAMAC_APPKEY_LEN * 2] = '\0';
   printf("APPKEY: %s\n", print_buf);
 
-  if (!semtech_loramac_is_mac_joined(&loramac)) {
+  while(!semtech_loramac_is_mac_joined(&loramac)) {
     /* Start the Over-The-Air Activation (OTAA) procedure to retrieve the
      * generated device address and to get the network and application session
      * keys.
@@ -200,18 +248,18 @@ int main(void)
     puts("Starting join procedure");
     if (semtech_loramac_join(&loramac, LORAMAC_JOIN_OTAA) != SEMTECH_LORAMAC_JOIN_SUCCEEDED) {
       puts("Join procedure failed");
-      while(1)
+      for(int i=0; i<60/4;i++)
       {
         gpio_clear(LEDON_PIN);
-        ztimer_sleep(ZTIMER_SEC,1);
+        ztimer_sleep(ZTIMER_SEC,2);
         gpio_set(LEDON_PIN);
-        ztimer_sleep(ZTIMER_SEC,1);
+        ztimer_sleep(ZTIMER_SEC,2);
       }
-      return 1;
     }
+    gpio_clear(LEDON_PIN);
   }
   gpio_set(LED0_PIN);
-
+  wakeup_sender_ztimer();
   puts("Join procedure succeeded");
   semtech_loramac_set_tx_mode(&loramac, LORAMAC_TX_UNCNF);
   semtech_loramac_set_dr(&loramac, LORAMAC_DR_5);
@@ -259,7 +307,9 @@ int main(void)
     msg_receive(&msg);
     mutex_lock(&sender_mutex);
     gpio_clear(LED0_PIN);
-      uint8_t ret = semtech_loramac_send(&loramac, (uint8_t *)sender_buffer, sender_cursor);
+    start_time = ztimer_now(ZTIMER_MSEC);
+    uint8_t ret = semtech_loramac_send(&loramac, (uint8_t *)sender_buffer, sender_cursor);
+    start_time = 0;
       if(ret == SEMTECH_LORAMAC_DUTYCYCLE_RESTRICTED)
       {
           puts("DUTYCYCLE_RESTRICTED");

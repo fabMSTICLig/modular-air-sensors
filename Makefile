@@ -23,21 +23,25 @@ USEMODULE += printf_float
 FEATURES_OPTIONAL += periph_rtc
 
 #USEMODULE += sps30
-USEMODULE += scd30
-#USEMODULE += scd4x
-USEMODULE += sht3x
-#USEMODULE += sfa3x
+#USEMODULE += scd30
+USEMODULE += scd4x
+#USEMODULE += sht3x
+USEMODULE += sfa3x
 USEMODULE += sen5x
 #USEMODULE += sgp40
 #USEMODULE += svm40
 #USEMODULE += bme680_i2c
 #USEMODULE += bme680_fp
-USEMODULE += driver_gmxxx
+#USEMODULE += driver_gmxxx
 
 USEMODULE += dlpp
 
 #Do we use SCD30 temperature and humidity sensor (0 ignored, 1 used)
 SCD30_TH_ON ?= 0
+
+SEN5X_TH ?= 1
+SEN5X_VOC ?= 1
+SEN5X_NOX ?= 1
 
 ifneq (,$(filter scd30,$(USEMODULE)))
   CFLAGS += -DUSE_SCD30_CHANNEL=1
@@ -73,9 +77,21 @@ ifneq (,$(filter sen5x,$(USEMODULE)))
   CFLAGS += -DUSE_SEN5X_CHANNEL=6
   CFLAGS += -DUSE_SEN5X_THREAD_PRIORITY=7
   CFLAGS += -DUSE_SEN5X_INTERVAL_SECS=60
+ifeq ($(SEN5X_VOC), 1)
+  CFLAGS += -DUSE_SEN5X_VOC=1
+  CFLAGS += -DUSE_SEN5X_VN_CHANNEL=7
+endif
+ifeq ($(SEN5X_NOX), 1)
+  CFLAGS += -DUSE_SEN5X_NOX=1
+  CFLAGS += -DUSE_SEN5X_VN_CHANNEL=7
+endif
+ifeq ($(SEN5X_TH), 1)
+  CFLAGS += -DUSE_SEN5X_TH=1
+  CFLAGS += -DUSE_SEN5X_TH_CHANNEL=2
+endif
 endif
 ifneq (,$(filter sgp40,$(USEMODULE)))
-  CFLAGS += -DUSE_SGP40_CHANNEL=7
+  CFLAGS += -DUSE_SGP40_CHANNEL=9
   CFLAGS += -DUSE_SGP40_THREAD_PRIORITY=8
   CFLAGS += -DUSE_SGP40_INTERVAL_SECS=60
 endif
@@ -83,6 +99,7 @@ ifneq (,$(filter bme680_i2c,$(USEMODULE)))
   CFLAGS += -DUSE_BME680_CHANNEL=8
   CFLAGS += -DUSE_BME680_THREAD_PRIORITY=9
   CFLAGS += -DUSE_BME680_INTERVAL_SECS=60
+  CFLAGS += -DBME680_PARAM_I2C_ADDR=0x76
 endif
 ifneq (,$(filter svm40,$(USEMODULE)))
   CFLAGS += -DUSE_SVM40_CHANNEL=10

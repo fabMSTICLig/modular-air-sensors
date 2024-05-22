@@ -28,7 +28,33 @@ extern "C" {
 #define USE_SEN5X_CHANNEL (1U)
 #endif
 
-#define USE_SEN5X_BUFFER_SIZE (18U)
+#define USE_SEN5X_BUFFER_SIZE (10U)
+
+#if defined(USE_SEN5X_VOC) || defined(USE_SEN5X_NOX)
+
+#ifndef USE_SEN5X_VN_CHANNEL
+#define USE_SEN5X_VN_CHANNEL (3U)
+#endif
+
+#if defined(USE_SEN5X_VOC) && defined(USE_SEN5X_NOX)
+#define USE_SEN5X_VN_BUFFER_SIZE (10U)
+#else
+#define USE_SEN5X_VN_BUFFER_SIZE (6U)
+#endif
+
+#endif //defined(USE_SEN5X_VOC) || defined(USE_SEN5X_NOX)
+
+#if defined(USE_SEN5X_TH)
+
+#define USE_SEN5X_TH_BUFFER_SIZE (6U)
+
+#ifndef USE_SEN5X_TH_CHANNEL
+#define USE_SEN5X_TH_CHANNEL (2U)
+#endif
+
+#endif //defined(USE_SEN5X_TH)
+
+
 
 void init_use_sen5x(kernel_pid_t mainpid, mutex_t * sender_mutex);
 

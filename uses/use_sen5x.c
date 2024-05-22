@@ -28,6 +28,21 @@ static mutex_t      timer_mutex = MUTEX_INIT_LOCKED;
 static airmsg_t     airmsg;
 static msg_t        msg;
 
+#if defined(USE_SEN5X_VOC) || defined(USE_SEN5X_NOX)
+static uint8_t      buffer_vn[USE_SEN5X_VN_BUFFER_SIZE];
+static mutex_t      buffer_vn_mutex;
+static airmsg_t     airmsg_vn;
+static msg_t        msg_vn;
+#endif
+
+#ifdef USE_SEN5X_TH
+static uint8_t      buffer_th[USE_SEN5X_TH_BUFFER_SIZE];
+static mutex_t      buffer_th_mutex;
+static airmsg_t     airmsg_th;
+static msg_t        msg_th;
+
+#endif
+
 
 static i2c_t i2c_dev;
 
@@ -105,19 +120,50 @@ static void * sen5x_thread(void *arg)
         printf("SEN5X Nox index: %.1f\n", nox_index / 10.0f);
       }
       mutex_lock(&buffer_mutex);
-      dlpp(USE_SEN5X_CHANNEL, buffer,'H',8, 
+      dlpp(USE_SEN5X_CHANNEL, buffer,'H',4, 
           (uint16_t)mass_concentration_pm1p0,
           (uint16_t)mass_concentration_pm2p5,
           (uint16_t)mass_concentration_pm4p0,
-          (uint16_t)mass_concentration_pm10p0,
-          (uint16_t)voc_index,
-          (uint16_t)voc_raw,
-          (uint16_t)nox_index,
-          (uint16_t)nox_raw
+          (uint16_t)mass_concentration_pm10p0
           );
       mutex_unlock(&buffer_mutex);
+
       int retmsg = msg_try_send(&msg, sender_pid);
       if(retmsg != 1) printf("SEN5X sendfail %d", retmsg);
+
+#if defined(USE_SEN5X_VOC) || defined(USE_SEN5X_NOX)
+      mutex_lock(&buffer_vn_mutex);
+#if defined(USE_SEN5X_VOC) && defined(USE_SEN5X_NOX)
+      uint8_t size_vn=4;
+#else
+      uint8_t size_vn=2;
+#endif
+
+      dlpp(USE_SEN5X_VN_CHANNEL, buffer_vn,'H',size_vn
+
+#ifdef USE_SEN5X_VOC
+          ,(uint16_t)voc_index
+          ,(uint16_t)voc_raw
+#endif
+#ifdef USE_SEN5X_NOX
+          ,(uint16_t)nox_index
+          ,(uint16_t)nox_raw
+#endif
+          );
+      mutex_unlock(&buffer_vn_mutex);
+      retmsg = msg_try_send(&msg_vn, sender_pid);
+      if(retmsg != 1) printf("SEN5X VN sendfail %d", retmsg);
+#endif
+
+#ifdef USE_SEN5X_TH
+      printf("SEN5X temp %d, hum %d\r\n",(int16_t)(ambient_temperature), (int16_t)(ambient_humidity));
+      mutex_lock(&buffer_th_mutex);
+      dlpp(USE_SEN5X_TH_CHANNEL, buffer_th,'h',2, (int16_t)(ambient_temperature/20), (int16_t)(ambient_humidity/10));
+      mutex_unlock(&buffer_th_mutex);
+      retmsg = msg_try_send(&msg_th, sender_pid);
+      if(retmsg != 1) printf("SEN5X TH sendfail %d", retmsg);
+#endif
+
     }else if(error == -ENXIO )
     {
       puts("SEN5X disconnected");
@@ -144,6 +190,20 @@ void init_use_sen5x(kernel_pid_t sender_pid_p, mutex_t * sender_mutex_p){
   airmsg.buffer=buffer;
   airmsg.mutex=&buffer_mutex;
   msg.content.ptr=&airmsg;
+
+#if defined(USE_SEN5X_VOC) || defined(USE_SEN5X_NOX)
+  mutex_init(&buffer_vn_mutex);
+  airmsg_vn.buffer=buffer_vn;
+  airmsg_vn.mutex=&buffer_vn_mutex;
+  msg_vn.content.ptr=&airmsg_vn;
+#endif
+
+#ifdef USE_SEN5X_TH
+  mutex_init(&buffer_th_mutex);
+  airmsg_th.buffer=buffer_th;
+  airmsg_th.mutex=&buffer_th_mutex;
+  msg_th.content.ptr=&airmsg_th;
+#endif
 
   char dummy[1];
   int retval;
